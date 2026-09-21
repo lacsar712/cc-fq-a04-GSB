@@ -47,7 +47,8 @@ docker compose up --build
 3. 作业详情页看到四个 Actor 阶段均为成功，指标卡出现 `reads` / `mean_quality` / `n_rate`。
 4. 再跑损坏样例：`ParseActor` = failed，其余 = skipped。
 5. 退出，用 `auditor` / `audit123456` 登录：可看历史与详情，提交作业接口返回 403 / 前端无提交入口。
-6. 健康检查：`curl http://localhost:8184/api/health`
+6. **指标检索** 页（两角色均可用）：把某合格作业的 `mean_quality` 填入「平均质量下限」→ 命中该作业；把下限抬高超过该值 → 空表并提示无命中（不会回退为全量列表）。三个门槛可任意组合（AND）。
+7. 健康检查：`curl http://localhost:8184/api/health`
 
 ## API
 
@@ -56,6 +57,7 @@ docker compose up --build
 - `GET  /api/samples`
 - `POST /api/jobs` `{ "sampleId": 1 }` 或 `{ "fastqText": "..." }`
 - `GET  /api/jobs`
+- `GET  /api/jobs/search?min_reads=&min_mean_quality=&max_n_rate=`（至少一个门槛，AND 组合，双角色可用）
 - `GET  /api/jobs/{id}`
 - `GET  /api/jobs/{id}/stages`
 
@@ -86,5 +88,5 @@ pytest -q
     tests/test_actors.py
   frontend/
     Dockerfile nginx.conf
-    src/pages/{Login,Samples,JobSubmit,JobDetail,JobHistory}Page.vue
+    src/pages/{Login,Samples,JobSubmit,JobDetail,JobHistory,JobSearch}Page.vue
 ```

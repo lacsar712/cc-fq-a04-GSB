@@ -47,6 +47,21 @@ export async function listJobs() {
   return data
 }
 
+export async function searchJobs({ minReads, minMeanQuality, maxNRate } = {}) {
+  const params = {}
+  if (minReads !== null && minReads !== undefined && minReads !== '') {
+    params.min_reads = minReads
+  }
+  if (minMeanQuality !== null && minMeanQuality !== undefined && minMeanQuality !== '') {
+    params.min_mean_quality = minMeanQuality
+  }
+  if (maxNRate !== null && maxNRate !== undefined && maxNRate !== '') {
+    params.max_n_rate = maxNRate
+  }
+  const { data } = await api.get('/jobs/search', { params })
+  return data
+}
+
 export async function getJob(id) {
   const { data } = await api.get(`/jobs/${id}`)
   return data

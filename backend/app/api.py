@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.auth import authenticate_user, create_access_token, get_current_user, require_bioops
@@ -99,6 +99,37 @@ def create_job(
 @router.get("/jobs", response_model=list[JobListItem])
 def list_jobs(_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     return db.query(Job).order_by(Job.id.desc()).all()
+
+
+# 注意：必须注册在 /jobs/{job_id} 之前，否则 "search" 会被当作 job_id 匹配
+@router.get("/jobs/search", response_model=list[JobListItem])
+def search_jobs(
+    min_reads: int | None = Query(default=None, ge=0, description="读段数下限 reads >="),
+    min_mean_quality: float | None = Query(
+        default=None, ge=0, description="平均质量下限 mean_quality >="
+    ),
+    max_n_rate: float | None = Query(
+        default=None, ge=0, le=1, description="N 率上限 n_rate <="
+    ),
+    _user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """按指标门槛组合检索历史作业（AND 语义，服务端过滤）。
+
+    无指标的作业（未成功完成）天然不满足任何数值门槛，不会命中；
+    未命中时返回空列表，绝不回退为全量。
+    """
+    if min_reads is None and min_mean_quality is None and max_n_rate is None:
+        raise HTTPException(status_code=400, detail="请至少设置一个指标门槛")
+
+    query = db.query(Job).filter(Job.metrics.isnot(None))
+    if min_reads is not None:
+        query = query.filter(Job.metrics["reads"].as_float() >= min_reads)
+    if min_mean_quality is not None:
+        query = query.filter(Job.metrics["mean_quality"].as_float() >= min_mean_quality)
+    if max_n_rate is not None:
+        query = query.filter(Job.metrics["n_rate"].as_float() <= max_n_rate)
+    return query.order_by(Job.id.desc()).all()
 
 
 @router.get("/jobs/{job_id}", response_model=JobOut)
