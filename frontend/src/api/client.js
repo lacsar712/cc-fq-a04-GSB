@@ -47,6 +47,12 @@ export async function listJobs() {
   return data
 }
 
+export async function searchJobs(params) {
+  // params: { min_reads?, min_mean_quality?, max_n_rate? }，过滤在服务端完成
+  const { data } = await api.get('/jobs/search', { params })
+  return data
+}
+
 export async function getJob(id) {
   const { data } = await api.get(`/jobs/${id}`)
   return data

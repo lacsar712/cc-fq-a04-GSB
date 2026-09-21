@@ -101,6 +101,42 @@ def list_jobs(_user: dict = Depends(get_current_user), db: Session = Depends(get
     return db.query(Job).order_by(Job.id.desc()).all()
 
 
+@router.get("/jobs/search", response_model=list[JobListItem])
+def search_jobs(
+    min_reads: int | None = None,
+    min_mean_quality: float | None = None,
+    max_n_rate: float | None = None,
+    _user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """按指标门槛在服务端检索历史作业。
+
+    三个条件 AND 组合；仅命中指标齐全且全部达标的作业。
+    未提供任何门槛、或没有命中行时一律返回空列表，绝不回退全量。
+    """
+    if min_reads is not None and min_reads < 0:
+        raise HTTPException(status_code=400, detail="读段数下限不能为负数")
+    if min_mean_quality is not None and min_mean_quality < 0:
+        raise HTTPException(status_code=400, detail="平均质量下限不能为负数")
+    if max_n_rate is not None and not 0 <= max_n_rate <= 1:
+        raise HTTPException(status_code=400, detail="N 率上限须在 0 到 1 之间")
+
+    # 未提供任何门槛时返回空表，绝不退化为全量列表
+    if min_reads is None and min_mean_quality is None and max_n_rate is None:
+        return []
+
+    query = db.query(Job).filter(Job.metrics.isnot(None))
+    if min_reads is not None:
+        query = query.filter(Job.metrics["reads"].as_integer() >= min_reads)
+    if min_mean_quality is not None:
+        query = query.filter(
+            Job.metrics["mean_quality"].as_float() >= min_mean_quality
+        )
+    if max_n_rate is not None:
+        query = query.filter(Job.metrics["n_rate"].as_float() <= max_n_rate)
+    return query.order_by(Job.id.desc()).all()
+
+
 @router.get("/jobs/{job_id}", response_model=JobOut)
 def get_job(job_id: int, _user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     job = (

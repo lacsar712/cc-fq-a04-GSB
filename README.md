@@ -56,6 +56,7 @@ docker compose up --build
 - `GET  /api/samples`
 - `POST /api/jobs` `{ "sampleId": 1 }` 或 `{ "fastqText": "..." }`
 - `GET  /api/jobs`
+- `GET  /api/jobs/search?min_reads=&min_mean_quality=&max_n_rate=` 指标门槛检索（服务端过滤，可任意组合；无条件/无命中返回空表，不回退全量；两角色可用）
 - `GET  /api/jobs/{id}`
 - `GET  /api/jobs/{id}/stages`
 
@@ -86,5 +87,14 @@ pytest -q
     tests/test_actors.py
   frontend/
     Dockerfile nginx.conf
-    src/pages/{Login,Samples,JobSubmit,JobDetail,JobHistory}Page.vue
+    src/pages/{Login,Samples,JobSubmit,JobDetail,JobHistory,JobSearch}Page.vue
 ```
+
+## 指标门槛检索
+
+顶部导航「指标检索」进入专用页（`/jobs/search`，bioops / auditor 均可访问）：
+
+- 读段数下限、平均质量下限、N 率上限三个门槛可任意组合（AND），过滤全部在服务端完成。
+- 命中行含样例名、状态、reads / mean_quality / n_rate 三指标、提交人，可点「查看详情」进原详情页。
+- 未设置门槛或无命中时为空表并给出说明，绝不悄悄退化为全量列表。
+
